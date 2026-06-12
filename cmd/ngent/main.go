@@ -24,6 +24,7 @@ import (
 	codexagent "github.com/beyond5959/ngent/internal/agents/codex"
 	cursoragent "github.com/beyond5959/ngent/internal/agents/cursor"
 	geminiagent "github.com/beyond5959/ngent/internal/agents/gemini"
+	hermesagent "github.com/beyond5959/ngent/internal/agents/hermes"
 	kimiagent "github.com/beyond5959/ngent/internal/agents/kimi"
 	opencodeagent "github.com/beyond5959/ngent/internal/agents/opencode"
 	piagent "github.com/beyond5959/ngent/internal/agents/pi"
@@ -84,6 +85,7 @@ func main() {
 	blackboxPreflightErr := blackboxagent.Preflight()
 	claudePreflightErr := claudeagent.Preflight()
 	cursorPreflightErr := cursoragent.Preflight()
+	hermesPreflightErr := hermesagent.Preflight()
 
 	if *contextRecentTurns <= 0 {
 		logger.Error("startup.invalid_context_recent_turns", "value", *contextRecentTurns)
@@ -115,6 +117,7 @@ func main() {
 	blackboxAvailable := blackboxPreflightErr == nil
 	claudeAvailable := claudePreflightErr == nil
 	cursorAvailable := cursorPreflightErr == nil
+	hermesAvailable := hermesPreflightErr == nil
 	logStartupPreflight(logger, "startup.codex_embedded_unavailable", codexPreflightErr)
 	logStartupPreflight(logger, "startup.pi_embedded_unavailable", piPreflightErr)
 	logStartupPreflight(logger, "startup.opencode_unavailable", opencodePreflightErr)
@@ -124,6 +127,7 @@ func main() {
 	logStartupPreflight(logger, "startup.blackbox_unavailable", blackboxPreflightErr)
 	logStartupPreflight(logger, "startup.claude_unavailable", claudePreflightErr)
 	logStartupPreflight(logger, "startup.cursor_unavailable", cursorPreflightErr)
+	logStartupPreflight(logger, "startup.hermes_unavailable", hermesPreflightErr)
 	if *debugFlag {
 		logger.Info("startup.debug_enabled", "acpTrace", true)
 	}
@@ -137,6 +141,7 @@ func main() {
 		blackboxAvailable,
 		claudeAvailable,
 		cursorAvailable,
+		hermesAvailable,
 	)
 	allowedAgentIDs := agentIDsFromInfos(agents)
 
@@ -251,6 +256,13 @@ func main() {
 					SessionID:       sessionID,
 					ConfigOverrides: configOverrides,
 				})
+			case agentimpl.AgentIDHermes:
+				return hermesagent.New(hermesagent.Config{
+					Dir:             thread.CWD,
+					ModelID:         modelID,
+					SessionID:       sessionID,
+					ConfigOverrides: configOverrides,
+				})
 			default:
 				return nil, fmt.Errorf("unsupported thread agent %q", thread.AgentID)
 			}
@@ -313,6 +325,11 @@ func main() {
 					return nil, cursorPreflightErr
 				}
 				return cursoragent.DiscoverModels(ctx, cursoragent.Config{Dir: modelDiscoveryDir})
+			case agentimpl.AgentIDHermes:
+				if hermesPreflightErr != nil {
+					return nil, hermesPreflightErr
+				}
+				return hermesagent.DiscoverModels(ctx, hermesagent.Config{Dir: modelDiscoveryDir})
 			default:
 				return nil, fmt.Errorf("unsupported agent %q", agentID)
 			}
@@ -430,7 +447,8 @@ func supportedAgents(
 	qwenAvailable,
 	blackboxAvailable,
 	claudeAvailable,
-	cursorAvailable bool,
+	cursorAvailable,
+	hermesAvailable bool,
 ) []httpapi.AgentInfo {
 	agents := make([]httpapi.AgentInfo, 0, len(agentimpl.AllAgentIDs()))
 	appendIfAvailable := func(available bool, agentID, name string) {
@@ -453,6 +471,7 @@ func supportedAgents(
 	appendIfAvailable(opencodeAvailable, agentimpl.AgentIDOpencode, "OpenCode")
 	appendIfAvailable(blackboxAvailable, agentimpl.AgentIDBlackbox, "BLACKBOX AI")
 	appendIfAvailable(cursorAvailable, agentimpl.AgentIDCursor, "Cursor CLI")
+	appendIfAvailable(hermesAvailable, agentimpl.AgentIDHermes, "Hermes")
 
 	return agents
 }

@@ -11,6 +11,7 @@ const (
 	AgentIDQwen     = "qwen"
 	AgentIDGemini   = "gemini"
 	AgentIDBlackbox = "blackbox"
+	AgentIDHermes  = "hermes"
 )
 
 // AllAgentIDs returns all supported agent IDs.
@@ -25,5 +26,6 @@ func AllAgentIDs() []string {
 		AgentIDQwen,
 		AgentIDOpencode,
 		AgentIDBlackbox,
+		AgentIDHermes,
 	}
 }
